@@ -10,6 +10,7 @@
  ******************************************************************************/
 package heros.solver;
 
+import heros.CustomInterProceduralCFG;
 import heros.InterproceduralCFG;
 import heros.ItemPrinter;
 
@@ -36,7 +37,7 @@ import com.google.common.collect.Table.Cell;
  * @param <M> The type of objects used to represent methods. Typically {@link SootMethod}.
  * @param <I> The type of inter-procedural control-flow graph being used.
  */
-public class FlowFunctionDotExport<N,D,M,I extends InterproceduralCFG<N, M>> {
+public class FlowFunctionDotExport<N,D,M,I extends CustomInterProceduralCFG<N, M>> {
 	private static class Numberer<D> {
 		long counter = 1;
 		Map<D, Long> map = new HashMap<D, Long>();

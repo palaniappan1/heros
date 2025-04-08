@@ -18,6 +18,7 @@ import heros.FlowFunctions;
 import heros.IDETabulationProblem;
 import heros.IFDSTabulationProblem;
 import heros.InterproceduralCFG;
+import heros.CustomInterProceduralCFG;
 import heros.MeetLattice;
 import heros.edgefunc.AllBottom;
 import heros.edgefunc.AllTop;
@@ -38,7 +39,7 @@ import java.util.Set;
  * @param <I> The type of inter-procedural control-flow graph being used.
  * @see IFDSTabulationProblem
  */
-public class IFDSSolver<N,D,M,I extends InterproceduralCFG<N, M>> extends IDESolver<N,D,M,IFDSSolver.BinaryDomain,I> {
+public class IFDSSolver<N,D,M,I extends CustomInterProceduralCFG<N, M>> extends IDESolver<N,D,M,IFDSSolver.BinaryDomain,I> {
 
 	protected static enum BinaryDomain { TOP,BOTTOM } 
 	
@@ -52,7 +53,7 @@ public class IFDSSolver<N,D,M,I extends InterproceduralCFG<N, M>> extends IDESol
 		super(createIDETabulationProblem(ifdsProblem));
 	}
 
-	static <N, D, M, I extends InterproceduralCFG<N, M>> IDETabulationProblem<N, D, M, BinaryDomain, I> createIDETabulationProblem(
+	static <N, D, M, I extends CustomInterProceduralCFG<N, M>> IDETabulationProblem<N, D, M, BinaryDomain, I> createIDETabulationProblem(
 			final IFDSTabulationProblem<N, D, M, I> ifdsProblem) {
 		return new IDETabulationProblem<N,D,M,BinaryDomain,I>() {
 

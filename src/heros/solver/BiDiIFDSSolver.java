@@ -14,7 +14,7 @@ import heros.EdgeFunction;
 import heros.FlowFunction;
 import heros.FlowFunctions;
 import heros.IFDSTabulationProblem;
-import heros.InterproceduralCFG;
+import heros.CustomInterProceduralCFG;
 import heros.solver.IFDSSolver.BinaryDomain;
 
 import java.util.Collections;
@@ -49,7 +49,7 @@ import com.google.common.collect.Maps;
  * @param <M> see {@link IFDSSolver}
  * @param <I> see {@link IFDSSolver}
  */
-public class BiDiIFDSSolver<N, D extends JoinHandlingNode<D>, M, I extends InterproceduralCFG<N, M>> extends BiDiIDESolver<N, D, M, BinaryDomain, I> {
+public class BiDiIFDSSolver<N, D extends JoinHandlingNode<D>, M, I extends CustomInterProceduralCFG<N, M>> extends BiDiIDESolver<N, D, M, BinaryDomain, I> {
 
 
 	/**

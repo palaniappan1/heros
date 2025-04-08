@@ -16,7 +16,7 @@ import heros.FlowFunction;
 import heros.FlowFunctions;
 import heros.IDETabulationProblem;
 import heros.IFDSTabulationProblem;
-import heros.InterproceduralCFG;
+import heros.CustomInterProceduralCFG;
 import heros.MeetLattice;
 import heros.solver.IFDSSolver.BinaryDomain;
 
@@ -52,7 +52,7 @@ import com.google.common.collect.Maps;
  * @param <M> see {@link IFDSSolver}
  * @param <I> see {@link IFDSSolver}
  */
-public class BiDiIDESolver<N, D, M, V, I extends InterproceduralCFG<N, M>> {
+public class BiDiIDESolver<N, D, M, V, I extends CustomInterProceduralCFG<N, M>> {
 
 	private final IDETabulationProblem<N, AbstractionWithSourceStmt, M,V, I> forwardProblem;
 	private final IDETabulationProblem<N, AbstractionWithSourceStmt, M,V, I> backwardProblem;

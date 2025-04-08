@@ -13,6 +13,7 @@ package heros.template;
 import heros.EdgeFunction;
 import heros.EdgeFunctions;
 import heros.IDETabulationProblem;
+import heros.CustomInterProceduralCFG;
 import heros.InterproceduralCFG;
 import heros.MeetLattice;
 
@@ -27,7 +28,7 @@ import heros.MeetLattice;
  * @param <V> The type of values to be computed along flow edges.
  * @param <I> The type of inter-procedural control-flow graph being used.
  */
-public abstract class DefaultIDETabulationProblem<N,D,M,V,I extends InterproceduralCFG<N,M>>
+public abstract class DefaultIDETabulationProblem<N,D,M,V,I extends CustomInterProceduralCFG<N,M>>
     extends DefaultIFDSTabulationProblem<N,D,M,I> implements IDETabulationProblem<N,D,M,V,I>{
 
 	private final EdgeFunction<V> allTopFunction;

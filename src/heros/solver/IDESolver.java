@@ -23,6 +23,11 @@ import heros.FlowFunctionCache;
 import heros.FlowFunctions;
 import heros.IDETabulationProblem;
 import heros.InterproceduralCFG;
+import heros.MethodRepresentation;
+import heros.utilities.MethodStats;
+import heros.utilities.MethodTracker;
+import java.util.HashSet;
+import heros.CustomInterProceduralCFG;
 import heros.MeetLattice;
 import heros.SynchronizedBy;
 import heros.ZeroedFlowFunctions;
@@ -65,7 +70,7 @@ import com.google.common.collect.Table.Cell;
  * @param <V> The type of values to be computed along flow edges.
  * @param <I> The type of inter-procedural control-flow graph being used.
  */
-public class IDESolver<N,D,M,V,I extends InterproceduralCFG<N, M>> {
+public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 	
 	public static CacheBuilder<Object, Object> DEFAULT_CACHE_BUILDER = CacheBuilder.newBuilder().concurrencyLevel(Runtime.getRuntime().availableProcessors()).initialCapacity(10000).softValues();
 	
@@ -90,6 +95,9 @@ public class IDESolver<N,D,M,V,I extends InterproceduralCFG<N, M>> {
 	
 	@SynchronizedBy("thread safe data structure, only modified internally")
 	protected final I icfg;
+
+	@SynchronizedBy
+	private final MethodTracker methodTracker = MethodTracker.getInstance();
 	
 	//stores summaries that were queried before they were computed
 	//see CC 2010 paper by Naeem, Lhotak and Rodriguez
@@ -283,7 +291,7 @@ public class IDESolver<N,D,M,V,I extends InterproceduralCFG<N, M>> {
     	// in submitting new tasks
     	if (executor.isTerminating())
     		return;
-    	executor.execute(new PathEdgeProcessingTask(edge));
+    	executor.execute(new PathEdgeProcessingTask(edge, icfg.getMethodOf(edge.getTarget())));
     	propagationCount++;
     }
 	
@@ -883,13 +891,17 @@ public class IDESolver<N,D,M,V,I extends InterproceduralCFG<N, M>> {
 	
 	private class PathEdgeProcessingTask implements Runnable {
 		private final PathEdge<N,D> edge;
+		private final M method;
 
-		public PathEdgeProcessingTask(PathEdge<N,D> edge) {
+		public PathEdgeProcessingTask(PathEdge<N,D> edge, M method) {
 			this.edge = edge;
+			this.method = method;
 		}
 
 		public void run() {
+			MethodStats methodRegistered = methodTracker.getOrregisterMethod(icfg.getMethodRepresentation(method));
 			if(icfg.isCallStmt(edge.getTarget())) {
+				methodRegistered.incrementNumberOfCallEdgesInTheMethod();
 				processCall(edge);
 			} else {
 				//note that some statements, such as "throw" may be
@@ -898,6 +910,7 @@ public class IDESolver<N,D,M,V,I extends InterproceduralCFG<N, M>> {
 					processExit(edge);
 				}
 				if(!icfg.getSuccsOf(edge.getTarget()).isEmpty()) {
+					methodRegistered.incrementNumberOfPropagations();
 					processNormalFlow(edge);
 				}
 			}

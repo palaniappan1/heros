@@ -14,7 +14,8 @@ import static org.junit.Assert.assertTrue;
 import heros.FlowFunction;
 import heros.FlowFunctions;
 import heros.IFDSTabulationProblem;
-import heros.InterproceduralCFG;
+import heros.CustomInterProceduralCFG;
+import heros.MethodRepresentation;
 import heros.fieldsens.AccessPathHandler;
 import heros.fieldsens.FlowFunction.ConstrainedFact;
 import heros.solver.BiDiIFDSSolver;
@@ -138,8 +139,13 @@ public class TestHelper {
 		return times;
 	}
 
-	public InterproceduralCFG<Statement, TestMethod> buildIcfg() {
-		return new InterproceduralCFG<Statement, TestMethod>() {
+	public CustomInterProceduralCFG<Statement, TestMethod> buildIcfg() {
+		return new CustomInterProceduralCFG<Statement, TestMethod>() {
+
+			@Override
+			public MethodRepresentation getMethodRepresentation(TestMethod method) {
+				return MethodRepresentation.from(method.name, method.name, method.hashCode());
+			}
 
 			@Override
 			public boolean isStartPoint(Statement stmt) {
@@ -399,22 +405,25 @@ public class TestHelper {
 	}
 
 	public void runSolver(final boolean followReturnsPastSeeds, final String...initialSeeds) {
-		IFDSSolver<Statement, JoinableFact, TestMethod, InterproceduralCFG<Statement, TestMethod>> solver =
-				new IFDSSolver<Statement, JoinableFact, TestMethod, InterproceduralCFG<Statement, TestMethod>>(
+		IFDSSolver<Statement, JoinableFact, TestMethod, CustomInterProceduralCFG<Statement, TestMethod>> solver =
+				new IFDSSolver<Statement, JoinableFact, TestMethod, CustomInterProceduralCFG<Statement, TestMethod>>(
 				createTabulationProblem(followReturnsPastSeeds, initialSeeds));
 
 		solver.solve();
+		for (MethodStats methodStats : MethodTracker.getInstance().methodStatsMap.values()) {
+			System.out.println(methodStats);
+		}
 		assertAllFlowFunctionsUsed();
 	}
 	
 	
 	public static enum TabulationProblemExchange {AsSpecified, ExchangeForwardAndBackward};
 	public void runBiDiSolver(TestHelper backwardHelper, TabulationProblemExchange direction, final String...initialSeeds) {
-		BiDiIFDSSolver<Statement, JoinableFact, TestMethod, InterproceduralCFG<Statement, TestMethod>> solver =
+		BiDiIFDSSolver<Statement, JoinableFact, TestMethod, CustomInterProceduralCFG<Statement, TestMethod>> solver =
 				direction == TabulationProblemExchange.AsSpecified ? 
-				new BiDiIFDSSolver<Statement, JoinableFact, TestMethod, InterproceduralCFG<Statement, TestMethod>>(createTabulationProblem(true, initialSeeds), 
+				new BiDiIFDSSolver<Statement, JoinableFact, TestMethod, CustomInterProceduralCFG<Statement, TestMethod>>(createTabulationProblem(true, initialSeeds),
 									backwardHelper.createTabulationProblem(true, initialSeeds)) :
-				new BiDiIFDSSolver<Statement, JoinableFact, TestMethod, InterproceduralCFG<Statement, TestMethod>>(backwardHelper.createTabulationProblem(true, initialSeeds), 
+				new BiDiIFDSSolver<Statement, JoinableFact, TestMethod, CustomInterProceduralCFG<Statement, TestMethod>>(backwardHelper.createTabulationProblem(true, initialSeeds),
 									createTabulationProblem(true, initialSeeds));
 		
 		solver.solve();
@@ -422,11 +431,11 @@ public class TestHelper {
 		backwardHelper.assertAllFlowFunctionsUsed();
 	}
 	
-	private IFDSTabulationProblem<Statement, JoinableFact, TestMethod, InterproceduralCFG<Statement, TestMethod>> createTabulationProblem(final boolean followReturnsPastSeeds, final String[] initialSeeds) {
-		final InterproceduralCFG<Statement, TestMethod> icfg = buildIcfg();
+	private IFDSTabulationProblem<Statement, JoinableFact, TestMethod, CustomInterProceduralCFG<Statement, TestMethod>> createTabulationProblem(final boolean followReturnsPastSeeds, final String[] initialSeeds) {
+		final CustomInterProceduralCFG<Statement, TestMethod> icfg = buildIcfg();
 		final FlowFunctions<Statement, JoinableFact, TestMethod> flowFunctions = flowFunctions();
 		
-		return new IFDSTabulationProblem<Statement, JoinableFact, TestMethod, InterproceduralCFG<Statement, TestMethod>>() {
+		return new IFDSTabulationProblem<Statement, JoinableFact, TestMethod, CustomInterProceduralCFG<Statement, TestMethod>>() {
 
 			@Override
 			public boolean followReturnsPastSeeds() {
@@ -454,7 +463,7 @@ public class TestHelper {
 			}
 
 			@Override
-			public InterproceduralCFG<Statement, TestMethod> interproceduralCFG() {
+			public CustomInterProceduralCFG<Statement, TestMethod> interproceduralCFG() {
 				return icfg;
 			}
 

@@ -10,6 +10,7 @@
  ******************************************************************************/
 package heros.solver;
 
+import heros.CustomInterProceduralCFG;
 import heros.EdgeFunction;
 import heros.IFDSTabulationProblem;
 import heros.InterproceduralCFG;
@@ -27,7 +28,7 @@ import com.google.common.collect.Maps;
  *  
  * @author Johannes Lerch
  */
-public class JoinHandlingNodesIFDSSolver<N, D extends JoinHandlingNode<D>, M, I extends InterproceduralCFG<N, M>> extends IFDSSolver<N, D, M, I> {
+public class JoinHandlingNodesIFDSSolver<N, D extends JoinHandlingNode<D>, M, I extends CustomInterProceduralCFG<N, M>> extends IFDSSolver<N, D, M, I> {
 
 	public JoinHandlingNodesIFDSSolver(IFDSTabulationProblem<N, D, M, I> ifdsProblem) {
 		super(ifdsProblem);
