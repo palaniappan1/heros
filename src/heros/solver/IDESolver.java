@@ -22,11 +22,8 @@ import heros.FlowFunction;
 import heros.FlowFunctionCache;
 import heros.FlowFunctions;
 import heros.IDETabulationProblem;
-import heros.InterproceduralCFG;
-import heros.MethodRepresentation;
 import heros.utilities.MethodStats;
 import heros.utilities.MethodTracker;
-import java.util.HashSet;
 import heros.CustomInterProceduralCFG;
 import heros.MeetLattice;
 import heros.SynchronizedBy;
@@ -46,7 +43,6 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Predicate;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Maps;
@@ -84,6 +80,8 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 
     //enable with -Dorg.slf4j.simpleLogger.defaultLogLevel=trace
     public static boolean DEBUG = logger.isDebugEnabled();
+
+	public boolean PRINT_LOGS = false;
 
 	protected CountingThreadPoolExecutor executor;
 	
@@ -257,7 +255,9 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 		}
 		if(logger.isDebugEnabled())
 			printStats();
-		
+
+		startProfiling();
+
 		//ask executor to shut down;
 		//this will cause new submissions to the executor to be rejected,
 		//but at this point all tasks should have completed anyway
@@ -265,6 +265,69 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 		//similarly here: we await termination, but this should happen instantaneously,
 		//as all tasks should have completed
 		runExecutorAndAwaitCompletion();
+	}
+
+	private void startProfiling() {
+		Set<Cell<N, N, Map<D, Set<D>>>> intraEdges = computedIntraPEdges.cellSet();
+		System.out.println("Profiling started");
+		int numberOfIntraPathEdges;
+		int numgenFacts;
+		int numInterPathEdges;
+		for(Cell<N, N, Map<D, Set<D>>> cell: intraEdges) {
+			N rowKey = cell.getRowKey();
+			M methodOf = icfg.getMethodOf(rowKey);
+			MethodStats registerMethod = methodTracker.getOrregisterMethod(icfg.getMethodRepresentation(methodOf));
+			numberOfIntraPathEdges = 0;
+			numgenFacts = 0;
+			for(Entry<D, Set<D>> edge: cell.getValue().entrySet()) {
+				D key = edge.getKey();
+				Set<D> value = edge.getValue();
+				numberOfIntraPathEdges += value.size();
+				if(value.contains(key)){
+					numgenFacts += value.size() - 1;
+				}
+				else{
+					numgenFacts += value.size();
+				}
+			}
+			registerMethod.incrementFactsGen(numgenFacts);
+			registerMethod.incrementNumberOfIntraEdges(numberOfIntraPathEdges);
+        }
+
+		Set<Cell<N, N, Map<D, Set<D>>>> interEdges = computedInterPEdges.cellSet();
+		for(Cell<N, N, Map<D, Set<D>>> cell: interEdges) {
+			N rowKey = cell.getRowKey();
+			M methodOf = icfg.getMethodOf(rowKey);
+			MethodStats registerMethod = methodTracker.getOrregisterMethod(icfg.getMethodRepresentation(methodOf));
+			numInterPathEdges = 0;
+			numgenFacts = 0;
+			if(icfg.isCallStmt(rowKey)){
+				for (Entry<D, Set<D>> edge : cell.getValue().entrySet()) {
+					numInterPathEdges += edge.getValue().size();
+					for(D src: edge.getValue()) {
+						if(!src.equals(zeroValue)){
+							numgenFacts++;
+						}
+						//TODO@Palani Process summary just as an interproc edge
+					}
+				}
+			}
+			// --- Return-flow Path Edges ---
+			// Since every fact passed to the callee was counted as a new fact, we
+			// have to count every fact propagated to the caller as a kill to
+			// satisfy our invariant. Obviously, every fact not propagated to the
+			// caller will count as a kill. If an actual new fact is propagated to
+			// the caller, we have to increase the number of generated facts by one.
+			// Zero value does not count towards generated/killed facts.
+			if(icfg.isExitStmt(rowKey)){
+				for(Entry<D, Set<D>> edge: cell.getValue().entrySet()) {
+					numInterPathEdges += edge.getValue().size();
+
+				}
+			}
+			registerMethod.incrementNumberOfInterEdges(numInterPathEdges);
+			registerMethod.incrementFactsGen(numgenFacts);
+		}
 	}
 
 	/**
@@ -338,11 +401,12 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 	 * Lines 13-20 of the algorithm; processing a call site in the caller's context.
 	 * 
 	 * For each possible callee, registers incoming call edges.
-	 * Also propagates call-to-return flows and summarized callee flows within the caller. 
-	 * 
-	 * @param edge an edge whose target node resembles a method call
+	 * Also propagates call-to-return flows and summarized callee flows within the caller.
+	 *
+	 * @param edge             an edge whose target node resembles a method call
+	 * @param methodRegistered
 	 */
-	private void processCall(PathEdge<N,D> edge) {
+	private void processCall(PathEdge<N,D> edge, MethodStats methodRegistered) {
 		final D d1 = edge.factAtSource();
 		final N n = edge.getTarget(); // a call node; line 14...
 
@@ -358,6 +422,7 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 			
 			//compute the call-flow function
 			FlowFunction<D> function = flowFunctions.getCallFlowFunction(n, sCalledProcN);
+			methodRegistered.incrementNumberOfFFQueries();
 			flowFunctionConstructionCount++;
 			Set<D> res = computeCallFlowFunction(function, d1, d2);
 			//for each callee's start point(s)
@@ -390,6 +455,7 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 						for(N retSiteN: returnSiteNs) {
 							//compute return-flow function
 							FlowFunction<D> retFunction = flowFunctions.getReturnFlowFunction(n, sCalledProcN, eP, retSiteN);
+							methodRegistered.incrementNumberOfFFQueries();
 							flowFunctionConstructionCount++;
 							Set<D> returnedFacts = computeReturnFlowFunction(retFunction, d3, d4, n, Collections.singleton(d2));
 							saveEdges(eP, retSiteN, d4, returnedFacts, true);
@@ -398,7 +464,8 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 								//update the caller-side summary function
 								EdgeFunction<V> f4 = edgeFunctions.getCallEdgeFunction(n, d2, sCalledProcN, d3);
 								EdgeFunction<V> f5 = edgeFunctions.getReturnEdgeFunction(n, sCalledProcN, eP, d4, retSiteN, d5);
-								EdgeFunction<V> fPrime = f4.composeWith(fCalleeSummary).composeWith(f5);					
+								EdgeFunction<V> fPrime = f4.composeWith(fCalleeSummary).composeWith(f5);
+								methodRegistered.incrementNumberOfEFQueries(2);
 								D d5_restoredCtx = restoreContextOnReturnedFact(n, d2, d5);
 								propagate(d1, retSiteN, d5_restoredCtx, f.composeWith(fPrime), n, false);
 							}
@@ -411,11 +478,13 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 		//process intra-procedural flows along call-to-return flow functions
 		for (N returnSiteN : returnSiteNs) {
 			FlowFunction<D> callToReturnFlowFunction = flowFunctions.getCallToReturnFlowFunction(n, returnSiteN);
+			methodRegistered.incrementNumberOfFFQueries();
 			flowFunctionConstructionCount++;
 			Set<D> returnFacts = computeCallToReturnFlowFunction(callToReturnFlowFunction, d1, d2);
 			saveEdges(n, returnSiteN, d2, returnFacts, false);
 			for(D d3: returnFacts) {
 				EdgeFunction<V> edgeFnE = edgeFunctions.getCallToReturnEdgeFunction(n, d2, returnSiteN, d3);
+				methodRegistered.incrementNumberOfEFQueries(1);
 				propagate(d1, returnSiteN, d3, f.composeWith(edgeFnE), n, false);
 			}
 		}
@@ -449,14 +518,15 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 	
 	/**
 	 * Lines 21-32 of the algorithm.
-	 * 
+	 * <p>
 	 * Stores callee-side summaries.
 	 * Also, at the side of the caller, propagates intra-procedural flows to return sites
 	 * using those newly computed summaries.
-	 * 
-	 * @param edge an edge whose target node resembles a method exits
+	 *
+	 * @param edge             an edge whose target node resembles a method exits
+	 * @param methodRegistered
 	 */
-	protected void processExit(PathEdge<N,D> edge) {
+	protected void processExit(PathEdge<N,D> edge, MethodStats methodRegistered) {
 		final N n = edge.getTarget(); // an exit node; line 21...
 		EdgeFunction<V> f = jumpFunction(edge);
 		M methodThatNeedsSummary = icfg.getMethodOf(n);
@@ -488,6 +558,7 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 			for(N retSiteC: icfg.getReturnSitesOfCallAt(c)) {
 				//compute return-flow function
 				FlowFunction<D> retFunction = flowFunctions.getReturnFlowFunction(c, methodThatNeedsSummary,n,retSiteC);
+				methodRegistered.incrementNumberOfFFQueries();
 				flowFunctionConstructionCount++;
 				//for each incoming-call value
 				for(D d4: entry.getValue()) {
@@ -525,12 +596,14 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 				for(N c: callers) {
 					for(N retSiteC: icfg.getReturnSitesOfCallAt(c)) {
 						FlowFunction<D> retFunction = flowFunctions.getReturnFlowFunction(c, methodThatNeedsSummary,n,retSiteC);
+						methodRegistered.incrementNumberOfFFQueries();
 						flowFunctionConstructionCount++;
 						Set<D> targets = computeReturnFlowFunction(retFunction, d1, d2, c, Collections.singleton(zeroValue));
 						saveEdges(n, retSiteC, d2, targets, true);
 						for(D d5: targets) {
 							EdgeFunction<V> f5 = edgeFunctions.getReturnEdgeFunction(c, icfg.getMethodOf(n), n, d2, retSiteC, d5);
 							propagateUnbalancedReturnFlow(retSiteC, d5, f.composeWith(f5), c);
+							methodRegistered.incrementNumberOfEFQueries(2);
 							//register for value processing (2nd IDE phase)
 							unbalancedRetSites.add(retSiteC);
 						}
@@ -541,6 +614,7 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 				//instead we thus call the return flow function will a null caller
 				if(callers.isEmpty()) {
 					FlowFunction<D> retFunction = flowFunctions.getReturnFlowFunction(null, methodThatNeedsSummary,n,null);
+					methodRegistered.incrementNumberOfFFQueries();
 					flowFunctionConstructionCount++;
 					retFunction.computeTargets(d2);
 				}
@@ -593,9 +667,11 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 	/**
 	 * Lines 33-37 of the algorithm.
 	 * Simply propagate normal, intra-procedural flows.
+	 *
 	 * @param edge
+	 * @param methodRegistered
 	 */
-	private void processNormalFlow(PathEdge<N,D> edge) {
+	private void processNormalFlow(PathEdge<N,D> edge, MethodStats methodRegistered) {
 		final D d1 = edge.factAtSource();
 		final N n = edge.getTarget(); 
 		final D d2 = edge.factAtTarget();
@@ -603,11 +679,13 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 		EdgeFunction<V> f = jumpFunction(edge);
 		for (N m : icfg.getSuccsOf(n)) {
 			FlowFunction<D> flowFunction = flowFunctions.getNormalFlowFunction(n,m);
+			methodRegistered.incrementNumberOfFFQueries();
 			flowFunctionConstructionCount++;
 			Set<D> res = computeNormalFlowFunction(flowFunction, d1, d2);
 			saveEdges(n, m, d2, res, false);
 			for (D d3 : res) {
 				EdgeFunction<V> fprime = f.composeWith(edgeFunctions.getNormalEdgeFunction(n, d2, m, d3));
+				methodRegistered.incrementNumberOfEFQueries(1);
 				propagate(d1, m, d3, fprime, null, false); 
 			}
 		}
@@ -898,20 +976,41 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 			this.method = method;
 		}
 
+		public boolean isZeroValue(PathEdge<N,D> edge){
+			return edge.dTarget.equals(zeroValue);
+		}
+
+		public void printDebugInfo(String stringToPrint){
+			if(PRINT_LOGS){
+				System.out.println(stringToPrint);
+			}
+		}
+
+
+
 		public void run() {
 			MethodStats methodRegistered = methodTracker.getOrregisterMethod(icfg.getMethodRepresentation(method));
+			methodRegistered.incrementNumberOfJumpFunctions();
+			if(!isZeroValue(edge)){
+				printDebugInfo("The fact generated at source is " + edge.factAtSource() + " and at target is " + edge.getTarget());
+			}
 			if(icfg.isCallStmt(edge.getTarget())) {
+//				System.out.println("Method Registered in call is " + methodRegistered.getMethodName() +  " " + methodRegistered.hashCode());
+				printDebugInfo("The call statement that is executed now is " + edge + " and the propagation count is " + propagationCount);
 				methodRegistered.incrementNumberOfCallEdgesInTheMethod();
-				processCall(edge);
+				processCall(edge, methodRegistered);
 			} else {
 				//note that some statements, such as "throw" may be
 				//both an exit statement and a "normal" statement
 				if(icfg.isExitStmt(edge.getTarget())) {
-					processExit(edge);
+//					System.out.println("Method Registered in exit is " + methodRegistered.getMethodName() + " " +  methodRegistered.hashCode());
+					printDebugInfo("The exit statement that is executed now is " + edge + " and the propagation count is " + propagationCount);
+					processExit(edge, methodRegistered);
 				}
 				if(!icfg.getSuccsOf(edge.getTarget()).isEmpty()) {
-					methodRegistered.incrementNumberOfPropagations();
-					processNormalFlow(edge);
+//					System.out.println("Method Registered in normal is " + methodRegistered.getMethodName() +" " +  methodRegistered.hashCode());
+					printDebugInfo("The normal statement that is executed now is " + edge + " and the propagation count is " + propagationCount);
+					processNormalFlow(edge, methodRegistered);
 				}
 			}
 		}

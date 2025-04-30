@@ -31,22 +31,6 @@ public class MethodTracker {
 
     }
 
-    public void trackFactsGen(MethodRepresentation methodInstance) {
-        methodStatsMap.get(methodInstance).incrementFactsGen();
-    }
-
-    public void trackFactsKilled(MethodRepresentation methodInstance) {
-        methodStatsMap.get(methodInstance).incrementFactsKilled();
-    }
-
-    public void trackNumberOfPropagations(MethodRepresentation methodInstance) {
-        methodStatsMap.get(methodInstance).incrementNumberOfPropagations();
-    }
-
-    public void setExitStats(MethodRepresentation methodInstance) {
-        methodStatsMap.get(methodInstance).setMethodExited();
-    }
-
     public MethodStats getStats(MethodRepresentation methodInstance) {
         return methodStatsMap.get(methodInstance);
     }

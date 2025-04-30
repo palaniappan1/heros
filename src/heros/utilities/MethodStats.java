@@ -5,12 +5,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 // For every method, some basic profiling information
 public class MethodStats {
     private final AtomicInteger factsGen = new AtomicInteger(0);
-    private final AtomicInteger factsKilled = new AtomicInteger(0);
     private int numberOfStatements = 0;
-    private final AtomicInteger numberOfPropagations = new AtomicInteger(0);
     private final AtomicInteger numberOfCallEdges = new AtomicInteger(0);
-    private boolean isMethodExited = false;
+    private final AtomicInteger numberOfJumpFunctions = new AtomicInteger(0);
+    private final AtomicInteger numberOfInterEdges = new AtomicInteger(0); // number of inter procedural edges
+    private final AtomicInteger FFQueries = new AtomicInteger(0);
+    private final AtomicInteger EFQueries = new AtomicInteger(0);
     private String methodName;
+    private final AtomicInteger numberOfIntraEdges = new AtomicInteger(0);
 
     public MethodStats(String methodName, int numberOfStatements) {
         this.methodName = methodName;
@@ -18,24 +20,34 @@ public class MethodStats {
     }
 
     // Increment methods
-    public void incrementFactsGen() {
-        factsGen.incrementAndGet();
+    public void incrementFactsGen(int numberOfFacts) {
+        factsGen.addAndGet(numberOfFacts);
     }
 
     public void incrementNumberOfCallEdgesInTheMethod(){
         numberOfCallEdges.incrementAndGet();
     }
 
-    public void incrementFactsKilled() {
-        factsKilled.incrementAndGet();
+
+    public void incrementNumberOfIntraEdges(int intraEdges) {
+        numberOfIntraEdges.getAndAdd(intraEdges);
     }
 
-    public void incrementNumberOfPropagations() {
-        numberOfPropagations.incrementAndGet();
+
+    public void incrementNumberOfJumpFunctions(){
+        numberOfJumpFunctions.incrementAndGet();
     }
 
-    public void setMethodExited(){
-        isMethodExited = true;
+    public void incrementNumberOfInterEdges(int number) {
+        numberOfInterEdges.addAndGet(number);
+    }
+
+    public void incrementNumberOfFFQueries(){
+        FFQueries.incrementAndGet();
+    }
+
+    public void incrementNumberOfEFQueries(int number){
+        EFQueries.addAndGet(number);
     }
 
     // Getters
@@ -43,31 +55,13 @@ public class MethodStats {
         return factsGen.get();
     }
 
-    public int getFactsKilled() {
-        return factsKilled.get();
+    public int getNumberOfIntraEdges() {
+        return numberOfIntraEdges.get();
     }
 
-    public int getNumberOfPropagations() {
-        return numberOfPropagations.get();
-    }
-
-    public boolean isMethodExited() {
-        return isMethodExited;
-    }
 
     public int getNumberOfCallEdges() {
         return numberOfCallEdges.get();
-    }
-
-    @Override
-    public String toString() {
-        return "MethodStats{" +
-                "methodName='" + methodName + '\'' +
-                "factsGen=" + factsGen +
-                ", factsKilled=" + factsKilled +
-                ", numberOfStatements=" + numberOfStatements +
-                ", numberOfPropagations=" + numberOfPropagations +
-                '}';
     }
 
     public String getMethodName() {
@@ -76,5 +70,39 @@ public class MethodStats {
 
     public void setMethodName(String methodName) {
         this.methodName = methodName;
+    }
+
+    public int getNumberOfJumpFunctions() {
+        return numberOfJumpFunctions.get();
+    }
+
+    public int getNumberOfInterEdges() {
+        return numberOfInterEdges.get();
+    }
+
+    public int getNumberOfFFQueries() {
+        return FFQueries.get();
+    }
+
+    public int getNumberOfEFQueries() {
+        return EFQueries.get();
+    }
+
+    @Override
+    public String toString() {
+        return "MethodStats{" +
+                "methodName='" + methodName + '\'' +
+                ", factsGen=" + factsGen +
+                ", numberOfStatements=" + numberOfStatements +
+                ", numberOfJumpFns=" + numberOfJumpFunctions +
+                ", numberOfInterEdges=" + numberOfInterEdges +
+                ", numberOfIntraEdges=" + numberOfIntraEdges +
+                ", FFQueries=" + FFQueries +
+                ", EFQueries=" + EFQueries +
+                '}';
+    }
+
+    public AtomicInteger getFFQueries() {
+        return FFQueries;
     }
 }
