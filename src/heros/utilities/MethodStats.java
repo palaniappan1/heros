@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 // For every method, some basic profiling information
 public class MethodStats {
     private final AtomicInteger factsGen = new AtomicInteger(0);
+    private final String methodSignature;
     private int numberOfStatements = 0;
     private final AtomicInteger numberOfCallEdges = new AtomicInteger(0);
     private final AtomicInteger numberOfJumpFunctions = new AtomicInteger(0);
@@ -14,9 +15,10 @@ public class MethodStats {
     private String methodName;
     private final AtomicInteger numberOfIntraEdges = new AtomicInteger(0);
 
-    public MethodStats(String methodName, int numberOfStatements) {
+    public MethodStats(String methodName, int numberOfStatements, String methodSignature) {
         this.methodName = methodName;
         this.numberOfStatements = numberOfStatements;
+        this.methodSignature = methodSignature;
     }
 
     // Increment methods
@@ -68,6 +70,14 @@ public class MethodStats {
         return methodName;
     }
 
+    public String getMethodSignature() {
+        return methodSignature;
+    }
+
+    public int getNumberOfStatements() {
+        return numberOfStatements;
+    }
+
     public void setMethodName(String methodName) {
         this.methodName = methodName;
     }
@@ -92,6 +102,7 @@ public class MethodStats {
     public String toString() {
         return "MethodStats{" +
                 "methodName='" + methodName + '\'' +
+                "methodSignature='" + methodSignature + '\'' +
                 ", factsGen=" + factsGen +
                 ", numberOfStatements=" + numberOfStatements +
                 ", numberOfJumpFns=" + numberOfJumpFunctions +

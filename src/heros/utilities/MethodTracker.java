@@ -26,7 +26,7 @@ public class MethodTracker {
 
     public MethodStats getOrregisterMethod(MethodRepresentation methodInstance) {
         return methodStatsMap.computeIfAbsent(
-                methodInstance, m -> new MethodStats(m.getMethodName(), methodInstance.getNumberOfStatements())
+                methodInstance, m -> new MethodStats(m.getMethodName(), methodInstance.getNumberOfStatements(),m.getMethodSignature())
         );
 
     }

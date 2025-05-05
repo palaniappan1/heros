@@ -269,7 +269,6 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 
 	private void startProfiling() {
 		Set<Cell<N, N, Map<D, Set<D>>>> intraEdges = computedIntraPEdges.cellSet();
-		System.out.println("Profiling started");
 		int numberOfIntraPathEdges;
 		int numgenFacts;
 		int numInterPathEdges;

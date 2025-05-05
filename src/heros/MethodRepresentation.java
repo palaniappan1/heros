@@ -6,17 +6,19 @@ public class MethodRepresentation {
     private final String methodName;
     private final String className;
     private final String fullyQualifiedName;
+    private final String methodSignature;
     private final int numberOfStatements;
 
-    public MethodRepresentation(String methodName, String className, int numberOfStatements) {
+    public MethodRepresentation(String methodName, String className, int numberOfStatements, String methodSignature) {
         this.methodName = methodName;
         this.className = className;
         this.fullyQualifiedName = className + "." + methodName;
         this.numberOfStatements = numberOfStatements;
+        this.methodSignature = methodSignature;
     }
 
     public static MethodRepresentation from(String methodName, String className, int numberOfStatements) {
-        return new MethodRepresentation(methodName, className, numberOfStatements);
+        return new MethodRepresentation(methodName, className, numberOfStatements, methodName + "signature");
     }
 
 
@@ -30,6 +32,10 @@ public class MethodRepresentation {
 
     public String getFullyQualifiedName() {
         return fullyQualifiedName;
+    }
+
+    public String getMethodSignature() {
+        return methodSignature;
     }
 
     public int getNumberOfStatements() {
