@@ -49,14 +49,18 @@ public class MethodRepresentation {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) return true; // Same reference check
-        if (obj == null || getClass() != obj.getClass()) return false; // Null & Class check
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
         MethodRepresentation that = (MethodRepresentation) obj;
-        return Objects.equals(fullyQualifiedName, that.fullyQualifiedName); // Key-based equality
+        return numberOfStatements == that.numberOfStatements &&
+                Objects.equals(methodName, that.methodName) &&
+                Objects.equals(className, that.className) &&
+                Objects.equals(fullyQualifiedName, that.fullyQualifiedName) &&
+                Objects.equals(methodSignature, that.methodSignature);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fullyQualifiedName);
+        return Objects.hash(methodName, className, fullyQualifiedName, numberOfStatements, methodSignature);
     }
 }
