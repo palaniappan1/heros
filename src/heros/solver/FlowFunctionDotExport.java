@@ -190,7 +190,21 @@ public class FlowFunctionDotExport<N,D,M,I extends CustomInterProceduralCFG<N, M
 			pf.println("\"];");
 		}
 	}
-	
+
+	private void returnMethodUnits(Set<N> units, M method,StringBuilder stringBuilder, UnitFactTracker utf) {
+		for(N methodUnit : units) {
+			Set<D> loc = utf.factsForUnit.get(methodUnit);
+			String unitText = escapeLabelString(printer.printNode(methodUnit, method));
+			stringBuilder.append(utf.getUnitLabel(methodUnit)).append(" [shape=record,label=\"").append(unitText).append(" ");
+			if(loc != null){//NOTE: if the '0' fact is removed for some reason this will be null
+				for(D hl : loc) {
+					stringBuilder.append("| <").append(utf.getFactLabel(methodUnit, hl)).append("> ").append(escapeLabelString(printer.printFact(hl)));
+				}
+			}
+			stringBuilder.append("\"];\n");
+		}
+	}
+
 	/**
 	 * Write a graph representation of the flow functions computed by the solver
 	 * to the file indicated by fileName.
@@ -263,5 +277,61 @@ public class FlowFunctionDotExport<N,D,M,I extends CustomInterProceduralCFG<N, M
 				pf.close();
 			}
 		}
+	}
+
+	public String extractdotContent() {
+		StringBuilder stringBuilder = new StringBuilder();
+		UnitFactTracker utf = new UnitFactTracker();
+
+		numberEdges(solver.computedIntraPEdges, utf);
+		numberEdges(solver.computedInterPEdges, utf);
+
+		stringBuilder.append("digraph ifds {" +
+				"node[shape=record];\n"
+		);
+		int methodCounter = 0;
+		for(Map.Entry<M, Set<N>> kv : utf.methodToUnit.entrySet()) {
+			Set<N> intraProc = kv.getValue();
+			stringBuilder.append("subgraph cluster").append(methodCounter).append(" {\n");
+			methodCounter++;
+			returnMethodUnits(intraProc, kv.getKey(),stringBuilder,utf);
+			for(N methodUnit : intraProc) {
+				Map<N, Map<D, Set<D>>> flows = solver.computedIntraPEdges.row(methodUnit);
+				for(Map.Entry<N, Map<D, Set<D>>> kv2 : flows.entrySet()) {
+					N destUnit = kv2.getKey();
+					for(Map.Entry<D, Set<D>> pointFlow : kv2.getValue().entrySet()) {
+						for(D destFact : pointFlow.getValue()) {
+							String edge = utf.getEdgePoint(methodUnit, pointFlow.getKey()) + " -> " + utf.getEdgePoint(destUnit, destFact);
+							stringBuilder.append(edge);
+							stringBuilder.append(";\n");
+						}
+					}
+				}
+			}
+			stringBuilder.append("label=\"").append(escapeLabelString(printer.printMethod(kv.getKey()))).append("\";\n");
+			stringBuilder.append("}\n");
+		}
+		for(Map.Entry<M, Set<N>> kv : utf.stubMethods.entrySet()) {
+			stringBuilder.append("subgraph cluster").append(methodCounter++).append(" {\n");
+			returnMethodUnits(kv.getValue(), kv.getKey(), stringBuilder, utf);
+			stringBuilder.append("label=\"").append(escapeLabelString("[STUB] " + printer.printMethod(kv.getKey()))).append("\";\n");
+			stringBuilder.append("graph[style=dotted];\n");
+			stringBuilder.append("}\n");
+		}
+		for(Cell<N, N, Map<D, Set<D>>> c : solver.computedInterPEdges.cellSet()) {
+			if(isNodeFiltered(c.getRowKey()) && isNodeFiltered(c.getColumnKey())) {
+				continue;
+			}
+			for(Map.Entry<D, Set<D>> kv : c.getValue().entrySet()) {
+				for(D dFact : kv.getValue()) {
+					stringBuilder.append(utf.getEdgePoint(c.getRowKey(), kv.getKey()));
+					stringBuilder.append(" -> ");
+					stringBuilder.append(utf.getEdgePoint(c.getColumnKey(), dFact));
+					stringBuilder.append(" [style=dotted];\n");
+				}
+			}
+		}
+		stringBuilder.append("}\n");
+		return stringBuilder.toString();
 	}
 }

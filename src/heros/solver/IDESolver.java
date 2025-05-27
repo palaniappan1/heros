@@ -247,6 +247,7 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 			//run executor and await termination of tasks
 			runExecutorAndAwaitCompletion();
 			durationFlowFunctionConstruction = System.currentTimeMillis() - before;
+			startProfiling();
 		}
 		if(computeValues) {
 			final long before = System.currentTimeMillis();
@@ -255,8 +256,6 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 		}
 		if(logger.isDebugEnabled())
 			printStats();
-
-		startProfiling();
 
 		//ask executor to shut down;
 		//this will cause new submissions to the executor to be rejected,
@@ -815,10 +814,11 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 		}
 	}
 	
-	private void propagateValueAtCall(Pair<N, D> nAndD, N n) {
+	private void propagateValueAtCall(Pair<N, D> nAndD, N n, MethodStats methodRegistered) {
 		D d = nAndD.getO2();
 		for(M q: icfg.getCalleesOfCallAt(n)) {
 			FlowFunction<D> callFlowFunction = flowFunctions.getCallFlowFunction(n, q);
+			methodRegistered.incrementNumberOfFFQueries();
 			flowFunctionConstructionCount++;
 			for(D dPrime: callFlowFunction.computeTargets(d)) {
 				EdgeFunction<V> edgeFn = edgeFunctions.getCallEdgeFunction(n, d, q, dPrime);
@@ -990,25 +990,19 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 		public void run() {
 			MethodStats methodRegistered = methodTracker.getOrregisterMethod(icfg.getMethodRepresentation(method));
 			methodRegistered.incrementNumberOfJumpFunctions();
-			if(!isZeroValue(edge)){
-				printDebugInfo("The fact generated at source is " + edge.factAtSource() + " and at target is " + edge.getTarget());
-			}
 			if(icfg.isCallStmt(edge.getTarget())) {
-//				System.out.println("Method Registered in call is " + methodRegistered.getMethodName() +  " " + methodRegistered.hashCode());
-				printDebugInfo("The call statement that is executed now is " + edge + " and the propagation count is " + propagationCount);
+				printDebugInfo("The call statement that is executed now is " + edge);
 				methodRegistered.incrementNumberOfCallEdgesInTheMethod();
 				processCall(edge, methodRegistered);
 			} else {
 				//note that some statements, such as "throw" may be
 				//both an exit statement and a "normal" statement
 				if(icfg.isExitStmt(edge.getTarget())) {
-//					System.out.println("Method Registered in exit is " + methodRegistered.getMethodName() + " " +  methodRegistered.hashCode());
-					printDebugInfo("The exit statement that is executed now is " + edge + " and the propagation count is " + propagationCount);
+					printDebugInfo("The exit statement that is executed now is " + edge);
 					processExit(edge, methodRegistered);
 				}
 				if(!icfg.getSuccsOf(edge.getTarget()).isEmpty()) {
-//					System.out.println("Method Registered in normal is " + methodRegistered.getMethodName() +" " +  methodRegistered.hashCode());
-					printDebugInfo("The normal statement that is executed now is " + edge + " and the propagation count is " + propagationCount);
+					printDebugInfo("The normal statement that is executed now is " + edge);
 					processNormalFlow(edge, methodRegistered);
 				}
 			}
@@ -1030,7 +1024,8 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 				propagateValueAtStart(nAndD, n);
 			}
 			if(icfg.isCallStmt(n)) {
-				propagateValueAtCall(nAndD, n);
+				MethodStats methodRegistered = methodTracker.getOrregisterMethod(icfg.getMethodRepresentation(icfg.getMethodOf(n)));
+				propagateValueAtCall(nAndD, n, methodRegistered);
 			}
 		}
 	}
