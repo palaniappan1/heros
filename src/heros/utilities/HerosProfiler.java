@@ -68,16 +68,15 @@ public class HerosProfiler<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
         this.interProceduralCFG = interproceduralCFG;
     }
 
-    public void updateProfilingInfo(PROFILING_INFO profilingInfo, MethodStats methodRegistered, long number){
+    private void updateProfilingInfo(PROFILING_INFO profilingInfo, MethodStats methodRegistered, long number){
        profilingInfo.update(methodRegistered, number);
     }
 
 
     private void registerAndUpdate(M method, PROFILING_INFO profilingInfo, long number) {
-        int callersCount = interProceduralCFG.getCallersOf(method).size();
 
         if(profilingInfo == PROFILING_INFO.NO_THIS_METHOD_CALLED){
-            number = callersCount;
+            number = interProceduralCFG.getCallersOf(method).size();
         }
 
         MethodStats methodStats = getOrRegisterMethodStats(method);

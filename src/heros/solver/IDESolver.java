@@ -16,8 +16,6 @@ package heros.solver;
 
 import heros.*;
 import heros.utilities.HerosProfiler;
-import heros.utilities.MethodStats;
-import heros.utilities.MethodTracker;
 import heros.edgefunc.EdgeIdentity;
 
 import java.lang.management.ManagementFactory;
@@ -86,10 +84,7 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 	@SynchronizedBy("thread safe data structure, only modified internally")
 	protected final I icfg;
 
-	@SynchronizedBy
-	private final MethodTracker methodTracker = MethodTracker.getInstance();
-	
-	//stores summaries that were queried before they were computed
+    //stores summaries that were queried before they were computed
 	//see CC 2010 paper by Naeem, Lhotak and Rodriguez
 	@SynchronizedBy("consistent lock on 'incoming'")
 	protected final Table<N,D,Table<N,D,EdgeFunction<V>>> endSummary = HashBasedTable.create();
@@ -276,8 +271,6 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 		int numInterPathEdges;
 		for(Cell<N, N, Map<D, Set<D>>> cell: intraEdges) {
 			N rowKey = cell.getRowKey();
-			M methodOf = icfg.getMethodOf(rowKey);
-			MethodStats registerMethod = methodTracker.getOrregisterMethod(icfg.getMethodRepresentation(methodOf));
 			numberOfIntraPathEdges = 0;
 			numgenFacts = 0;
 			for(Entry<D, Set<D>> edge: cell.getValue().entrySet()) {
@@ -291,15 +284,13 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 					numgenFacts += value.size();
 				}
 			}
-			registerMethod.incrementFactsGen(numgenFacts);
-			registerMethod.incrementNumberOfIntraEdges(numberOfIntraPathEdges);
+			herosProfiler.registerMethodAndUpdateInfo(rowKey, HerosProfiler.PROFILING_INFO.FACTS_GEN, numgenFacts);
+			herosProfiler.registerMethodAndUpdateInfo(rowKey, HerosProfiler.PROFILING_INFO.NO_INTRA_EDGES, numberOfIntraPathEdges);
         }
 
 		Set<Cell<N, N, Map<D, Set<D>>>> interEdges = computedInterPEdges.cellSet();
 		for(Cell<N, N, Map<D, Set<D>>> cell: interEdges) {
 			N rowKey = cell.getRowKey();
-			M methodOf = icfg.getMethodOf(rowKey);
-			MethodStats registerMethod = methodTracker.getOrregisterMethod(icfg.getMethodRepresentation(methodOf));
 			numInterPathEdges = 0;
 			numgenFacts = 0;
 			if(icfg.isCallStmt(rowKey)){
@@ -326,8 +317,8 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 
 				}
 			}
-			registerMethod.incrementNumberOfInterEdges(numInterPathEdges);
-			registerMethod.incrementFactsGen(numgenFacts);
+			herosProfiler.registerMethodAndUpdateInfo(rowKey, HerosProfiler.PROFILING_INFO.FACTS_GEN, numgenFacts);
+			herosProfiler.registerMethodAndUpdateInfo(rowKey, HerosProfiler.PROFILING_INFO.NO_INTER_EDGES, numInterPathEdges);
 		}
 	}
 
