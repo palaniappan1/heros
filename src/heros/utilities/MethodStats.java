@@ -1,6 +1,8 @@
 package heros.utilities;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 
 // For every method, some basic profiling information
 public class MethodStats {
@@ -12,8 +14,12 @@ public class MethodStats {
     private final AtomicInteger numberOfInterEdges = new AtomicInteger(0); // number of inter procedural edges
     private final AtomicInteger FFQueries = new AtomicInteger(0);
     private final AtomicInteger EFQueries = new AtomicInteger(0);
+    private final LongAdder cpuTimeNanos = new LongAdder();
     private String methodName;
     private final AtomicInteger numberOfIntraEdges = new AtomicInteger(0);
+    private boolean callGraphValueSet = false;
+    private int numberOfTimeThisMethodCalled = 0;
+    private final AtomicInteger numberOfTimesCPUTimeAdded = new AtomicInteger(0);
 
     public MethodStats(String methodName, int numberOfStatements, String methodSignature) {
         this.methodName = methodName;
@@ -108,12 +114,40 @@ public class MethodStats {
                 ", numberOfJumpFns=" + numberOfJumpFunctions +
                 ", numberOfInterEdges=" + numberOfInterEdges +
                 ", numberOfIntraEdges=" + numberOfIntraEdges +
+                ", numberOfCallEdges=" + numberOfCallEdges +
                 ", FFQueries=" + FFQueries +
                 ", EFQueries=" + EFQueries +
+                ", numberOfTimeThisMethodCalled=" + numberOfTimeThisMethodCalled +
+                ", CPUTime=" + TimeUnit.MICROSECONDS.convert(getCpuTimeNanos(), TimeUnit.NANOSECONDS) +
+                ", numberOfTimesCPUTimeAdded=" + numberOfTimesCPUTimeAdded +
                 '}';
     }
 
     public AtomicInteger getFFQueries() {
         return FFQueries;
+    }
+
+    public long getCpuTimeNanos() {
+        return cpuTimeNanos.sum();
+    }
+
+    public void addCpuTime(long nanos){
+        cpuTimeNanos.add(nanos);
+        numberOfTimesCPUTimeAdded.incrementAndGet();
+    }
+
+    public long getNumberOfTimesCPUTimeAdded() {
+        return numberOfTimesCPUTimeAdded.get();
+    }
+
+    public int getNumberOfTimeThisMethodCalled() {
+        return numberOfTimeThisMethodCalled;
+    }
+
+    public void setNumberOfTimeThisMethodCalled(int numberOfTimeThisMethodCalled){
+        if(!this.callGraphValueSet) {
+            this.numberOfTimeThisMethodCalled = numberOfTimeThisMethodCalled;
+            this.callGraphValueSet = true;
+        }
     }
 }

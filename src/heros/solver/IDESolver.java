@@ -14,22 +14,13 @@
 package heros.solver;
 
 
-import heros.DontSynchronize;
-import heros.EdgeFunction;
-import heros.EdgeFunctionCache;
-import heros.EdgeFunctions;
-import heros.FlowFunction;
-import heros.FlowFunctionCache;
-import heros.FlowFunctions;
-import heros.IDETabulationProblem;
+import heros.*;
 import heros.utilities.MethodStats;
 import heros.utilities.MethodTracker;
-import heros.CustomInterProceduralCFG;
-import heros.MeetLattice;
-import heros.SynchronizedBy;
-import heros.ZeroedFlowFunctions;
 import heros.edgefunc.EdgeIdentity;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -161,6 +152,13 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 	protected final boolean computeValues;
 
 	private boolean recordEdges;
+
+	private static final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+	static {
+		if (threadMXBean.isThreadCpuTimeSupported() && !threadMXBean.isThreadCpuTimeEnabled()) {
+			threadMXBean.setThreadCpuTimeEnabled(true);
+		}
+	}
 
 	/**
 	 * Creates a solver for the given problem, which caches flow functions and edge functions.
@@ -988,23 +986,34 @@ public class IDESolver<N,D,M,V,I extends CustomInterProceduralCFG<N, M>> {
 
 
 		public void run() {
-			MethodStats methodRegistered = methodTracker.getOrregisterMethod(icfg.getMethodRepresentation(method));
+			long threadId = Thread.currentThread().getId();
+			long startCpu = threadMXBean.getThreadCpuTime(threadId);
+			MethodRepresentation methodRepresentation = icfg.getMethodRepresentation(method);
+			MethodStats methodRegistered = methodTracker.getOrregisterMethod(methodRepresentation);
+			methodRegistered.setNumberOfTimeThisMethodCalled(icfg.getCallersOf(method).size());
 			methodRegistered.incrementNumberOfJumpFunctions();
-			if(icfg.isCallStmt(edge.getTarget())) {
-				printDebugInfo("The call statement that is executed now is " + edge);
-				methodRegistered.incrementNumberOfCallEdgesInTheMethod();
-				processCall(edge, methodRegistered);
-			} else {
-				//note that some statements, such as "throw" may be
-				//both an exit statement and a "normal" statement
-				if(icfg.isExitStmt(edge.getTarget())) {
-					printDebugInfo("The exit statement that is executed now is " + edge);
-					processExit(edge, methodRegistered);
+			try{
+				if(icfg.isCallStmt(edge.getTarget())) {
+					printDebugInfo("The call statement that is executed now is " + edge);
+					methodRegistered.incrementNumberOfCallEdgesInTheMethod();
+					processCall(edge, methodRegistered);
+				} else {
+					//note that some statements, such as "throw" may be
+					//both an exit statement and a "normal" statement
+					if(icfg.isExitStmt(edge.getTarget())) {
+						printDebugInfo("The exit statement that is executed now is " + edge);
+						processExit(edge, methodRegistered);
+					}
+					if(!icfg.getSuccsOf(edge.getTarget()).isEmpty()) {
+						printDebugInfo("The normal statement that is executed now is " + edge);
+						processNormalFlow(edge, methodRegistered);
+					}
 				}
-				if(!icfg.getSuccsOf(edge.getTarget()).isEmpty()) {
-					printDebugInfo("The normal statement that is executed now is " + edge);
-					processNormalFlow(edge, methodRegistered);
-				}
+			} finally {
+				long endCpu = threadMXBean.getThreadCpuTime(threadId);
+				long duration = endCpu - startCpu;
+
+				methodRegistered.addCpuTime(duration);
 			}
 		}
 	}
