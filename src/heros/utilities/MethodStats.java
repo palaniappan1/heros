@@ -1,23 +1,35 @@
 package heros.utilities;
 
+import lombok.*;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 // For every method, some basic profiling information
+@Getter
+@Setter
+@AllArgsConstructor
+@Data
 public class MethodStats {
     private final AtomicInteger factsGen = new AtomicInteger(0);
+    @Getter
     private final String methodSignature;
+    @Getter
     private int numberOfStatements = 0;
     private final AtomicInteger numberOfCallEdges = new AtomicInteger(0);
     private final AtomicInteger numberOfJumpFunctions = new AtomicInteger(0);
     private final AtomicInteger numberOfInterEdges = new AtomicInteger(0); // number of inter procedural edges
+    @Getter
     private final AtomicInteger FFQueries = new AtomicInteger(0);
     private final AtomicInteger EFQueries = new AtomicInteger(0);
     private final LongAdder cpuTimeNanos = new LongAdder();
+    @Getter
+    @Setter
     private String methodName;
     private final AtomicInteger numberOfIntraEdges = new AtomicInteger(0);
     private boolean callGraphValueSet = false;
+    @Getter
     private int numberOfTimeThisMethodCalled = 0;
     private final AtomicInteger numberOfTimesCPUTimeAdded = new AtomicInteger(0);
 
@@ -58,57 +70,11 @@ public class MethodStats {
         EFQueries.addAndGet(number);
     }
 
-    // Getters
-    public int getFactsGen() {
-        return factsGen.get();
-    }
-
-    public int getNumberOfIntraEdges() {
-        return numberOfIntraEdges.get();
-    }
-
-
-    public int getNumberOfCallEdges() {
-        return numberOfCallEdges.get();
-    }
-
-    public String getMethodName() {
-        return methodName;
-    }
-
-    public String getMethodSignature() {
-        return methodSignature;
-    }
-
-    public int getNumberOfStatements() {
-        return numberOfStatements;
-    }
-
-    public void setMethodName(String methodName) {
-        this.methodName = methodName;
-    }
-
-    public int getNumberOfJumpFunctions() {
-        return numberOfJumpFunctions.get();
-    }
-
-    public int getNumberOfInterEdges() {
-        return numberOfInterEdges.get();
-    }
-
-    public int getNumberOfFFQueries() {
-        return FFQueries.get();
-    }
-
-    public int getNumberOfEFQueries() {
-        return EFQueries.get();
-    }
-
     @Override
     public String toString() {
         return "MethodStats{" +
                 "methodName='" + methodName + '\'' +
-                "methodSignature='" + methodSignature + '\'' +
+                ", methodSignature='" + methodSignature + '\'' +
                 ", factsGen=" + factsGen +
                 ", numberOfStatements=" + numberOfStatements +
                 ", numberOfJumpFns=" + numberOfJumpFunctions +
@@ -123,10 +89,6 @@ public class MethodStats {
                 '}';
     }
 
-    public AtomicInteger getFFQueries() {
-        return FFQueries;
-    }
-
     public long getCpuTimeNanos() {
         return cpuTimeNanos.sum();
     }
@@ -134,14 +96,6 @@ public class MethodStats {
     public void addCpuTime(long nanos){
         cpuTimeNanos.add(nanos);
         numberOfTimesCPUTimeAdded.incrementAndGet();
-    }
-
-    public long getNumberOfTimesCPUTimeAdded() {
-        return numberOfTimesCPUTimeAdded.get();
-    }
-
-    public int getNumberOfTimeThisMethodCalled() {
-        return numberOfTimeThisMethodCalled;
     }
 
     public void setNumberOfTimeThisMethodCalled(int numberOfTimeThisMethodCalled){
